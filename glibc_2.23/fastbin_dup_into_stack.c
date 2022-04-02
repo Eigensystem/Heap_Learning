@@ -14,7 +14,7 @@ int main()
 	int *a = malloc(8);
 	int *b = malloc(8);
 	int *c = malloc(8);
-
+	//chunk A; chunk B; chunk C
 	fprintf(stderr, "1st malloc(8): %p\n", a);
 	fprintf(stderr, "2nd malloc(8): %p\n", b);
 	fprintf(stderr, "3rd malloc(8): %p\n", c);
@@ -33,9 +33,11 @@ int main()
 
 	fprintf(stderr, "Now the free list has [ %p, %p, %p ]. "
 		"We'll now carry out our attack by modifying data at %p.\n", a, b, a, a);
+	//d point to chunk A
 	unsigned long long *d = malloc(8);
 
 	fprintf(stderr, "1st malloc(8): %p\n", d);
+	//chunk B
 	fprintf(stderr, "2nd malloc(8): %p\n", malloc(8));
 	fprintf(stderr, "Now the free list has [ %p ].\n", a);
 	fprintf(stderr, "Now, we have access to %p while it remains at the head of the free list.\n"
