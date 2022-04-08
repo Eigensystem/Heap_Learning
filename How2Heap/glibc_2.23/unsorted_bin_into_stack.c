@@ -13,7 +13,7 @@ int main() {
 	intptr_t* victim = malloc(0x100);
 
 	printf("Allocating another chunk to avoid consolidating the top chunk with the small one during the free()\n");
-	//*防止被利用chunk--victim在free时和top chunk合并
+	//*防止被利用chunk即此时的victim在free时和top chunk合并
 	intptr_t* p1 = malloc(0x100);
 
 	printf("Freeing the chunk %p, it will be inserted in the unsorted bin\n", victim);
