@@ -38,7 +38,7 @@ int main() {
 	//*可直接控制return_addr，绕过stack overflow和canary的限制
 	victim[1] = (intptr_t)stack_buffer; // victim->bk is pointing to stack
 	//------------------------------------
-
+	//修改当前函数的返回地址
 	printf("Now next malloc will return the region of our fake chunk: %p\n", &stack_buffer[2]);
 	char *p2 = malloc(0x100);
 	printf("malloc(0x100): %p\n", p2);
