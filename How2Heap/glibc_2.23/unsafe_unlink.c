@@ -6,6 +6,9 @@
 
 uint64_t *chunk0_ptr;
 
+//*此技术不存在版本限制条件，可以在目前任意glibc版本中使用
+//*各个版本对于分配chunk的size要求不一致，需要根据版本避开fastbin chunk和tcache的size范围
+
 int main()
 {
 	setbuf(stdout, NULL);
@@ -62,7 +65,8 @@ int main()
 	chunk0_ptr[0] = 0x4141414142424242LL;
 	printf("New Value: %s\n",victim_string);
 
-	// sanity check
+	//*使用此种技巧，需要chunk0_ptr指向存放 &chunk0_ptr 前不远处以至于能够修改chunk_ptr指向地址时才能实现任意地址读写
+	//*故一次构造仅能更改一处数据
 	assert(*(long *)victim_string == 0x4141414142424242L);
 }
 
