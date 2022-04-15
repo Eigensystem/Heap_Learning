@@ -63,6 +63,7 @@ int main()
 	printf("b.size: %#lx\n", *b_size_ptr);
 	printf("b.size is: (0x200 + 0x10) | prev_in_use\n");
 	printf("We overflow 'a' with a single null byte into the metadata of 'b'\n");
+	//模拟chunk a溢出一个null byte，淹没了chunk b的prev_inuse位
 	a[real_a_size] = 0; // <--- THIS IS THE "EXPLOITED BUG"
 	printf("b.size: %#lx\n", *b_size_ptr);
 
